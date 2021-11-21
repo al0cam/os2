@@ -1,49 +1,70 @@
 <template>
   <div class="bodyAlign">
-    <div>
-      <b-button style="align-content: center" @click="whatever" class="">
-        Read from file
-      </b-button>
-    </div>
-    <div>
-      <b-button style="align-content: center" @click="whatever2">
-        Print file1
-      </b-button>
-    </div>
-    <div>
-      <v-btn @click="whatever3"
-      >Save blob</v-btn>
-    </div>
-    <div>
-      <v-btn @click="whatever4"
-      >Generate RSA key</v-btn>
-    </div>
-    <div>
-      <v-btn @click="whatever5"
-      >Print RSA key</v-btn>
-    </div>
-    <div>
-      <v-btn @click="whatever6"
-      >Print RSA key 2</v-btn>
-    </div>
-    <v-file-input
-        ref="inputForFile"
-        v-model="file1"
-        truncate-length="15"
-    ></v-file-input>
     <div class="keyAlign">
-      <v-textarea
-          placeholder="Private key"
-          v-model="privateKey"
-      ></v-textarea>
-      <v-textarea
-          placeholder="Public key"
-          v-model="privateKey"
-      ></v-textarea>
-      <v-textarea
-          placeholder="Secret key"
-          v-model="secretKey"
-      ></v-textarea>
+      <div>
+        <b-button style="align-content: center" @click="readFromFile">
+          Read from file
+        </b-button>
+      </div>
+      <div>
+        <b-button style="align-content: center" @click="writeContentOfFile">
+          Print file1
+        </b-button>
+      </div>
+      <div>
+        <v-btn @click="generateAsymmetricKeys"
+        >Generate asymmetric keys</v-btn>
+      </div>
+      <div>
+        <v-btn @click="generateSymmetricKey"
+        >Generate symmetric key </v-btn>
+      </div>
+      <div>
+        <v-btn @click="generateSymmetricKey"
+        >Save keys to file</v-btn>
+      </div>
+    </div>
+    <div class="keyAlign">
+      <div>
+        <v-file-input
+            ref="inputForFile"
+            v-model="privateKey.privateKeyFile"
+            truncate-length="15"
+            @change="readFromFile(privateKey)"
+            placeholder="Insert private key file"
+        ></v-file-input>
+        <v-textarea
+            placeholder="Private key"
+            v-model="privateKey.privateKeyPem"
+        ></v-textarea>
+      </div>
+      <div>
+        <v-file-input
+            ref="inputForFile"
+            v-model="publicKey.publicKeyFile"
+            truncate-length="15"
+            placeholder="Insert public key file"
+        ></v-file-input>
+        <v-textarea
+            placeholder="Public key"
+            v-model="publicKey.publicKeyPem"
+        ></v-textarea>
+      </div>
+      <div>
+        <v-file-input
+            ref="inputForFile"
+            v-model="secretKey.secretKeyFile"
+            truncate-length="15"
+            placeholder="Insert secret key file"
+        ></v-file-input>
+        <v-textarea
+            placeholder="Secret key"
+            v-model="secretKey.secretKeyString"
+        ></v-textarea>
+        <v-btn @click="saveKeyToFile(secretKey)">
+          Save key to file
+        </v-btn>
+      </div>
     </div>
 <!--    <v-text-field v-model="file1.content"></v-text-field>-->
 
@@ -58,6 +79,7 @@
 import fileSaver from 'file-saver';
 import OpenCrypto from 'opencrypto';
 const openCrypto = new OpenCrypto();
+const reader = new FileReader()
 // const forge = require('node-forge');
 // forge.options.usePureJavaScript = true;
 
@@ -65,60 +87,61 @@ export default {
   name: "MainPage",
   data(){
     return{
-      file1: null,
-      file1Content: null,
+      textFile: null,
+      textFileContent: null,
       keyPair: null,
-      keyPair2: null,
-      privateKey: null,
-      publicKey: null,
-      secretKey: null
+      privateKey:{
+        privateKeyFile: null,
+        privateKeyPem: null,
+        privateKeyObject: null
+      },
+      publicKey:{
+        publicKeyFile: null,
+        publicKeyPem: null,
+        publicKeyObject: null
+      },
+      secretKey:{
+        secretKeyFile: null,
+        secretKeyString: null,
+        secretKeyObject: null
+      },
     }
   },
-  methods: {
-    whatever() {
-      console.log(this.file1)
-      const reader = new FileReader()
+  mounted() {
 
-      reader.readAsText(this.file1, 'UTF-8')
-      reader.onload = (item) => {
-        this.file1Content = item.target.result;
-        console.log(item.target.result)
+  },
+  methods: {
+    readFromFile(passedFile) {
+      var keys = Object.keys(passedFile)
+      console.log(keys)
+      if (passedFile[keys[0]] != null)
+      {
+        reader.readAsText(passedFile[keys[0]], 'UTF-8')
+        reader.onload = (item) => {
+          passedFile[keys[1]] = item.target.result;
+        }
       }
     },
-    whatever2() {
+    writeContentOfFile() {
       console.log(this.file1Content);
     },
-    whatever3() {
-      console.log('sugma')
-      var blob = new Blob([this.file1Content], {type: 'text/plain;charset=utf-8'});
-      fileSaver.saveAs(blob, 'nice.txt')
+    saveKeyToFile(key){
+      var keys = Object.keys(key)
+      var blob = new Blob([keys[1]], {type: 'text/plain;charset=utf-8'});
+      console.log(keys)
+      fileSaver.saveAs(blob, keys[0]+'.txt')
     },
-    async whatever4() {
-      this.keyPair = await crypto.subtle.generateKey(
-          {
-            name: "RSA-OAEP",
-            modulusLength: 2048,
-            publicExponent: new Uint8Array([1, 0, 1]),
-            hash: "SHA-256"
-          },
-          true,
-          ["encrypt", "decrypt"]
-      );
-
-      this.keyPair2 = await openCrypto.getRSAKeyPair();
+    async generateAsymmetricKeys() {
+      this.keyPair = await openCrypto.getRSAKeyPair();
+      this.translateKeysToPem();
     },
-    async whatever5() {
-      console.log(this.keyPair['publicKey']);
-      var pubKey = await crypto.subtle.exportKey("jwk", this.keyPair['publicKey'])
-      console.log(pubKey)
-      var Key = await crypto.subtle.exportKey("jwk", this.keyPair['privateKey'])
-      console.log(Key)
-
-
+    async generateSymmetricKey() {
+      this.secretKey.secretKeyObject = await openCrypto.getSharedKey();
+      this.secretKey.secretKeyString = (await crypto.subtle.exportKey('jwk', this.secretKey.secretKeyObject)).k;
     },
-    async whatever6() {
-      this.privateKey = await openCrypto.cryptoPrivateToPem(this.keyPair2.privateKey)
-      this.publicKey = await openCrypto.cryptoPublicToPem(this.keyPair2['publicKey'])
+    async translateKeysToPem() {
+      this.privateKey.privateKeyPem = await openCrypto.cryptoPrivateToPem(this.keyPair['privateKey'])
+      this.publicKey.publicKeyPem = await openCrypto.cryptoPublicToPem(this.keyPair['publicKey'])
     }
   }
 }
@@ -148,6 +171,7 @@ export default {
   flex-direction: row;
   padding: 0.5%;
 }
+
 
 
 </style>
