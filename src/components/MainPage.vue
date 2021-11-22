@@ -37,6 +37,9 @@
             placeholder="Private key"
             v-model="privateKey.privateKeyPem"
         ></v-textarea>
+        <v-btn @click="saveKeyToFile(privateKey)">
+          Save key to file
+        </v-btn>
       </div>
       <div>
         <v-file-input
@@ -49,6 +52,10 @@
             placeholder="Public key"
             v-model="publicKey.publicKeyPem"
         ></v-textarea>
+
+        <v-btn @click="saveKeyToFile(publicKey)">
+          Save key to file
+        </v-btn>
       </div>
       <div>
         <v-file-input
@@ -127,9 +134,16 @@ export default {
     },
     saveKeyToFile(key){
       var keys = Object.keys(key)
-      var blob = new Blob([keys[1]], {type: 'text/plain;charset=utf-8'});
-      console.log(keys)
-      fileSaver.saveAs(blob, keys[0]+'.txt')
+      if (key[keys[1]] != null)
+      {
+        var blob = new Blob([key[keys[1]]], {type: 'text/plain;charset=utf-8'});
+        console.log(keys)
+        fileSaver.saveAs(blob, keys[0]+'.txt')
+      }
+      else
+      {
+
+      }
     },
     async generateAsymmetricKeys() {
       this.keyPair = await openCrypto.getRSAKeyPair();
