@@ -2,16 +2,6 @@
   <div class="bodyAlign">
     <div class="keyAlign">
       <div>
-        <b-button style="align-content: center" @click="readFromFile">
-          Read from file
-        </b-button>
-      </div>
-      <div>
-        <b-button style="align-content: center" @click="writeContentOfFile">
-          Print file1
-        </b-button>
-      </div>
-      <div>
         <v-btn @click="generateAsymmetricKeys"
         >Generate asymmetric keys</v-btn>
       </div>
@@ -19,10 +9,22 @@
         <v-btn @click="generateSymmetricKey"
         >Generate symmetric key </v-btn>
       </div>
-      <div>
-        <v-btn @click="generateSymmetricKey"
-        >Save keys to file</v-btn>
-      </div>
+    </div>
+    <div>
+      <v-file-input
+          ref="inputForFile"
+          v-model="textFile.fileName"
+          truncate-length="15"
+          @change="readFromFile(textFile)"
+          placeholder="Insert text file"
+      ></v-file-input>
+      <v-textarea
+          placeholder="Text"
+          v-model="textFile.fileContent"
+      ></v-textarea>
+      <v-btn @click="saveKeyToFile()">
+        Save text to file
+      </v-btn>
     </div>
     <div class="keyAlign">
       <div>
@@ -46,13 +48,13 @@
             ref="inputForFile"
             v-model="publicKey.publicKeyFile"
             truncate-length="15"
+            @change="readFromFile(publicKey)"
             placeholder="Insert public key file"
         ></v-file-input>
         <v-textarea
             placeholder="Public key"
             v-model="publicKey.publicKeyPem"
         ></v-textarea>
-
         <v-btn @click="saveKeyToFile(publicKey)">
           Save key to file
         </v-btn>
@@ -62,6 +64,7 @@
             ref="inputForFile"
             v-model="secretKey.secretKeyFile"
             truncate-length="15"
+            @change="readFromFile(secretKey)"
             placeholder="Insert secret key file"
         ></v-file-input>
         <v-textarea
@@ -73,7 +76,23 @@
         </v-btn>
       </div>
     </div>
-<!--    <v-text-field v-model="file1.content"></v-text-field>-->
+    <v-snackbar
+        v-model="snackbar"
+        multi-line="true"
+        timeout="2500"
+    >
+      {{ this.snackbarText }}
+      <template v-slot:action="{ attrs }">
+        <v-btn
+            color="blue"
+            text
+            v-bind="attrs"
+            @click="snackbar = false"
+        >
+          Close
+        </v-btn>
+      </template>
+    </v-snackbar>
 
   </div>
 </template>
@@ -94,9 +113,13 @@ export default {
   name: "MainPage",
   data(){
     return{
-      textFile: null,
-      textFileContent: null,
+      snackbar: false,
+      snackbarText: null,
       keyPair: null,
+      textFile:{
+        fileName: null,
+        fileContent: null
+      },
       privateKey:{
         privateKeyFile: null,
         privateKeyPem: null,
@@ -128,9 +151,11 @@ export default {
           passedFile[keys[1]] = item.target.result;
         }
       }
-    },
-    writeContentOfFile() {
-      console.log(this.file1Content);
+      else
+      {
+        this.snackbarText = "No file to read from!"
+        this.snackbar = true
+      }
     },
     saveKeyToFile(key){
       var keys = Object.keys(key)
@@ -142,12 +167,13 @@ export default {
       }
       else
       {
-
+        this.snackbarText = "Field is empty, please generate a key!"
+        this.snackbar = true
       }
     },
     async generateAsymmetricKeys() {
       this.keyPair = await openCrypto.getRSAKeyPair();
-      this.translateKeysToPem();
+      await this.translateKeysToPem();
     },
     async generateSymmetricKey() {
       this.secretKey.secretKeyObject = await openCrypto.getSharedKey();
