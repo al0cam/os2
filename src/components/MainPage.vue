@@ -22,7 +22,7 @@
           placeholder="Text"
           v-model="textFile.fileContent"
       ></v-textarea>
-      <v-btn @click="saveKeyToFile()">
+      <v-btn @click="saveToFile(textFile)">
         Save text to file
       </v-btn>
     </div>
@@ -39,7 +39,7 @@
             placeholder="Private key"
             v-model="privateKey.privateKeyPem"
         ></v-textarea>
-        <v-btn @click="saveKeyToFile(privateKey)">
+        <v-btn @click="saveToFile(privateKey)">
           Save key to file
         </v-btn>
       </div>
@@ -55,7 +55,7 @@
             placeholder="Public key"
             v-model="publicKey.publicKeyPem"
         ></v-textarea>
-        <v-btn @click="saveKeyToFile(publicKey)">
+        <v-btn @click="saveToFile(publicKey)">
           Save key to file
         </v-btn>
       </div>
@@ -71,14 +71,14 @@
             placeholder="Secret key"
             v-model="secretKey.secretKeyString"
         ></v-textarea>
-        <v-btn @click="saveKeyToFile(secretKey)">
+        <v-btn @click="saveToFile(secretKey)">
           Save key to file
         </v-btn>
       </div>
     </div>
     <v-snackbar
         v-model="snackbar"
-        multi-line="true"
+        :multi-line="true"
         timeout="2500"
     >
       {{ this.snackbarText }}
@@ -143,12 +143,15 @@ export default {
   methods: {
     readFromFile(passedFile) {
       var keys = Object.keys(passedFile)
-      console.log(keys)
       if (passedFile[keys[0]] != null)
       {
         reader.readAsText(passedFile[keys[0]], 'UTF-8')
         reader.onload = (item) => {
-          passedFile[keys[1]] = item.target.result;
+          passedFile[keys[1]] = item.target.result.toString();
+          if((keys[0]).includes('private'))
+            this.translatePemToKeys(this.privateKey)
+          else if((keys[0]).includes('public'))
+            this.translatePemToKeys(this.publicKey)
         }
       }
       else
@@ -157,17 +160,16 @@ export default {
         this.snackbar = true
       }
     },
-    saveKeyToFile(key){
+    saveToFile(key){
       var keys = Object.keys(key)
       if (key[keys[1]] != null)
       {
         var blob = new Blob([key[keys[1]]], {type: 'text/plain;charset=utf-8'});
-        console.log(keys)
         fileSaver.saveAs(blob, keys[0]+'.txt')
       }
       else
       {
-        this.snackbarText = "Field is empty, please generate a key!"
+        this.snackbarText = "Field is empty, nothing to save!"
         this.snackbar = true
       }
     },
@@ -182,18 +184,35 @@ export default {
     async translateKeysToPem() {
       this.privateKey.privateKeyPem = await openCrypto.cryptoPrivateToPem(this.keyPair['privateKey'])
       this.publicKey.publicKeyPem = await openCrypto.cryptoPublicToPem(this.keyPair['publicKey'])
+    },
+    async translatePemToKeys(key){
+      var keys = Object.keys(key)
+      if((keys[0]).includes('private'))
+      {
+        this.privateKey.privateKeyObject = await openCrypto.pemPrivateToCrypto(this.privateKey.privateKeyPem,
+            { name: 'RSA-OAEP',
+              hash: 'SHA-512',
+              usages: ['decrypt', 'unwrapKey'],
+              isExtractable: true })
+      }
+      else if((keys[0]).includes('public'))
+      {
+        this.publicKey.publicKeyObject = await openCrypto.pemPublicToCrypto(this.publicKey.publicKeyPem.toString(),
+            { name: 'RSA-OAEP',
+              hash: 'SHA-512',
+              usages: ['encrypt', 'wrapKey'],
+              isExtractable: true })
+        console.log(this.publicKey.publicKeyObject)
+      }
     }
   }
 }
-
 // console.log(Crypto.SHA1('diego').toString());
 
 
 </script>
 
-
 <style scoped>
-
 .bodyAlign
 {
   display: flex;
@@ -203,7 +222,6 @@ export default {
 .bodyAlign div
 {
   padding: 0.5%;
-
 }
 .keyAlign
 {
@@ -211,7 +229,4 @@ export default {
   flex-direction: row;
   padding: 0.5%;
 }
-
-
-
 </style>
